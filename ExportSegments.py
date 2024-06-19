@@ -6,6 +6,20 @@
 # - bug fix: using copy codec for segment which starts on key frame and ends on end of the video
 # - bug fix: time in round bug (seconds or minutes > 59)
 # - add: decode time taken from file name (YYMMDD_HHmmss) and append time in of segment to it
+# 2022.11.04
+# - add: Use copy codec option
+# - bug fix: Do nothing if dialog is canceled
+# 2024.06.19
+# - bug fix: copy codec not used after processing first segment where copy codec can't be used
+
+_outDir = "d:\\avidemux\\"
+_outExt = ".mp4"
+_decodeAudioCodec = "LavAAC"
+_decodeAudioBitrate = "bitrate=128"
+_decodeVideoCodec = "x264"
+_decodeProfile = "x264VerySlow25"
+adm = Avidemux()
+ed = Editor()
 
 def lstrip(s, x):
   found = True
@@ -32,9 +46,6 @@ def substring(string, start, stop):
     i += 1
 
   return out
-
-adm = Avidemux()
-ed = Editor()
 
 def isKeyframe(pts):
   return pts == ed.getPrevKFramePts(pts+1)
@@ -119,7 +130,7 @@ def appendFileName(segments, offset, fileName, sep, timeTakenPts=0):
       for segment in dict1[k]:
         segment[2] = fileName + "_" + ptsToStr(segment[0] - offset + timeTakenPts, sep, hours, False)
 
-def exportSegments(segments, offset, outDir):
+def exportSegmentsCopy(segments, offset, outDir):
   vidDur = ed.getRefVideoDuration(0)
 
   for segment in segments:
@@ -131,10 +142,19 @@ def exportSegments(segments, offset, outDir):
       adm.videoCodec("copy")
       adm.markerB = adm.markerB - 1
     else:
-      adm.audioCodec(0, "LavAAC", "bitrate=128")
-      adm.videoCodecSetProfile("x264", "x264VerySlow25")
+      adm.audioCodec(0, _decodeAudioCodec, _decodeAudioBitrate)
+      adm.videoCodecSetProfile(_decodeVideoCodec, _decodeProfile)
 
-    outFilePath = outDir + segment[2] + ".mp4"
+    outFilePath = outDir + segment[2] + _outExt
+    adm.save(outFilePath)
+
+def exportSegmentsDecode(segments, offset, outDir):
+  for segment in segments:
+    adm.markerA = segment[0] - offset
+    adm.markerB = adm.markerA + segment[1]
+    adm.audioCodec(0, _decodeAudioCodec, _decodeAudioBitrate)
+    adm.videoCodecSetProfile(_decodeVideoCodec, _decodeProfile)
+    outFilePath = outDir + segment[2] + _outExt
     adm.save(outFilePath)
 
 def main():
@@ -143,10 +163,16 @@ def main():
 
   decodeTimeTaken = DFToggle("Decode time taken from file name")
   decodeTimeTaken.value = False
+  useCopyCodec = DFToggle("Use Copy codec")
+  useCopyCodec.value = True
   dialog = DialogFactory("Export Segments")
   dialog.addControl(decodeTimeTaken)
+  dialog.addControl(useCopyCodec)
 
-  if dialog.show() == 1 and decodeTimeTaken.value:
+  if dialog.show() != 1:
+    return
+
+  if decodeTimeTaken.value:
     # decode time taken from file name (YYMMDD_HHmmss) and append time in of segment to it
     fileName = getFileName()
     dateTaken = substring(fileName, 0, 8)
@@ -160,12 +186,16 @@ def main():
     appendFileName(segments, offset, getFileName(), "-")
 
   resetEdit()
-  exportSegments(segments, offset, "d:\\avidemux\\")
+
+  # I had problem with passing useCopyCodec as parameter.
+  # The parameter was changed to false after processing first segment where copy codec can't be used
+  if useCopyCodec.value:
+    exportSegmentsCopy(segments, offset, _outDir)
+  else:
+    exportSegmentsDecode(segments, offset, _outDir)
 
   #restore original segments
   adm.clearSegments()
   addSegments(segments)
 
 main()
-
-
