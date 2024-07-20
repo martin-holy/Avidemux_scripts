@@ -11,6 +11,8 @@
 # - bug fix: Do nothing if dialog is canceled
 # 2024.06.19
 # - bug fix: copy codec not used after processing first segment where copy codec can't be used
+# 2024.07.20
+# - bug fix: go to first frame before export to avoid error message
 
 _outDir = "d:\\avidemux\\"
 _outExt = ".mp4"
@@ -65,6 +67,7 @@ def addSegments(segments):
 def resetEdit():
   adm.clearSegments()
   adm.addSegment(0, 0, ed.getRefVideoDuration(0))
+  adm.setCurrentPts(0)
 
 def getOffset():
   return ed.getPts(0)
