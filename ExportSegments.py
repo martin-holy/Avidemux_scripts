@@ -13,6 +13,11 @@
 # - bug fix: copy codec not used after processing first segment where copy codec can't be used
 # 2024.07.20
 # - bug fix: go to first frame before export to avoid error message
+# 2024.10.02
+# - bug fix: decode profile not set because it was not copied to AppData\Roaming\avidemux\pluginSettings\x264\1\
+
+# INFO
+# To be able to load the decode profile via script it needs to be copied to AppData\Roaming\avidemux\pluginSettings\x264\1\
 
 _outDir = "d:\\avidemux\\"
 _outExt = ".mp4"
@@ -22,6 +27,7 @@ _decodeVideoCodec = "x264"
 _decodeProfile = "x264VerySlow25"
 adm = Avidemux()
 ed = Editor()
+gui = Gui()
 
 def lstrip(s, x):
   found = True
@@ -145,20 +151,24 @@ def exportSegmentsCopy(segments, offset, outDir):
       adm.videoCodec("copy")
       adm.markerB = adm.markerB - 1
     else:
-      adm.audioCodec(0, _decodeAudioCodec, _decodeAudioBitrate)
-      adm.videoCodecSetProfile(_decodeVideoCodec, _decodeProfile)
+      setProfile()
 
     outFilePath = outDir + segment[2] + _outExt
     adm.save(outFilePath)
 
 def exportSegmentsDecode(segments, offset, outDir):
+  setProfile()
+
   for segment in segments:
     adm.markerA = segment[0] - offset
-    adm.markerB = adm.markerA + segment[1]
-    adm.audioCodec(0, _decodeAudioCodec, _decodeAudioBitrate)
-    adm.videoCodecSetProfile(_decodeVideoCodec, _decodeProfile)
+    adm.markerB = adm.markerA + segment[1]    
     outFilePath = outDir + segment[2] + _outExt
     adm.save(outFilePath)
+
+def setProfile():
+  adm.audioCodec(0, _decodeAudioCodec, _decodeAudioBitrate)
+  ok = adm.videoCodecSetProfile(_decodeVideoCodec, _decodeProfile)
+  if not ok: gui.displayError("Couldn't load profile "+ _decodeProfile + ".json", "Read script info!") 
 
 def main():
   offset = getOffset()
