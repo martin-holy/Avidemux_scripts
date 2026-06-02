@@ -15,9 +15,12 @@
 # - bug fix: go to first frame before export to avoid error message
 # 2024.10.02
 # - bug fix: decode profile not set because it was not copied to AppData\Roaming\avidemux\pluginSettings\x264\1\
+# 2026.06.02
+# - bug fix: parsing file name from file path resulting to "Cannot open muxer" error
 
 # INFO
 # To be able to load the decode profile via script it needs to be copied to AppData\Roaming\avidemux\pluginSettings\x264\1\
+# Don't forget to create _outDir to prevent "Cannot open muxer" error
 
 _outDir = "d:\\avidemux\\"
 _outExt = ".mp4"
@@ -79,7 +82,7 @@ def getOffset():
   return ed.getPts(0)
 
 def getFileName():
-  return splitext(ed.getRefVideoName(0))[0].split("/")[-1]
+  return splitext(ed.getRefVideoName(0))[0].replace("\\", "/").split("/")[-1]
 
 def ptsToStr(pts, sep, hours=True, intSec=True):
   s = pts / 1000000
